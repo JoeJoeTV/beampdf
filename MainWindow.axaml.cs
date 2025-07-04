@@ -442,22 +442,15 @@ public partial class MainWindow : Window
         for (int i = 0; i < num; ++i)
         {
             var info = openDoc.GetEmbfileInfo(i);
-            if (info.FileName != "speaker-note-list")
+            if (!info.FileName.EndsWith("-speaker-note"))
+                continue;
+
+            string nr = info.FileName.Split('-')[0];
+            if (!int.TryParse(nr, out int slideNum))
                 continue;
 
             string content = System.Text.Encoding.UTF8.GetString(openDoc.GetEmbfile(i));
-            using StringReader reader = new(content);
-            string line;
-            while ((line = reader.ReadLine()) != null)
-            {
-                int splitIdx = line.IndexOf('*');
-                if (!int.TryParse(line[..splitIdx], out int slideNum))
-                    continue;
-
-                string txt = line[(splitIdx+1)..];
-                txt = txt.Replace('\\', '\n');
-                notes.Add(slideNum, txt);
-            }
+            notes.Add(slideNum, content);
         }
     }
 
@@ -471,31 +464,31 @@ public partial class MainWindow : Window
         for (int i = 0; i < num; ++i)
         {
             var info = openDoc.GetEmbfileInfo(i);
-            if (info.FileName != "video-list")
+            if (!info.FileName.Contains("-video-"))
                 continue;
 
-            string content = System.Text.Encoding.UTF8.GetString(openDoc.GetEmbfile(i));
-            using StringReader reader = new(content);
-            string line;
-            while ((line = reader.ReadLine()) != null)
-            {
-                var vid = line.Split('*');
-                if (!int.TryParse(vid[0], out int slideNum))
-                    continue;
+            var filenameSplit = info.FileName.Split("-video-");
+            if (filenameSplit.Length != 2)
+                continue;
 
-                bool isVideoLoop = bool.Parse(vid[1]);
+            string nr = filenameSplit[0];
+            if (!int.TryParse(nr, out int slideNum))
+                continue;
 
-                var box = vid[2].Split(',');
-                if (box.Length != 3)
-                    continue;
-                if (!float.TryParse(box[0], out float x)) continue;
-                if (!float.TryParse(box[1], out float y)) continue;
-                if (!float.TryParse(box[2], out float w)) continue;
+            string filename = filenameSplit[1];
 
-                string filename = Path.Join(Path.GetDirectoryName(openDocFilename), vid[3]);
+            var box = info.Desc.Split(',');
+            if (box.Length != 4)
+                continue;
 
-                videos.Add(slideNum, (filename, x, y, w, isVideoLoop));
-            }
+            if (!float.TryParse(box[0], out float x)) continue;
+            if (!float.TryParse(box[1], out float y)) continue;
+            if (!float.TryParse(box[2], out float w)) continue;
+            if (!bool.TryParse(box[3], out bool isVideoLoop)) continue;
+
+            filename = Path.Join(Path.GetDirectoryName(openDocFilename), filename);
+
+            videos.Add(slideNum, (filename, x, y, w, isVideoLoop));
        }
     }
 
